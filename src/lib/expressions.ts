@@ -78,13 +78,59 @@ export function scoreExpressions(features: FaceFeatures, blendshapes?: any[]): E
     }
     
     // Lip press
-    const lipPress = bs.mouthPressLeft || bs.mouthPressRight || 0;
-    if (lipPress > 0.2) {
+    const lipPress = ((bs.mouthPressLeft || 0) + (bs.mouthPressRight || 0)) / 2;
+    if (lipPress > 0.15) {
       results.push({
         id: 'lip_press',
         name: 'Lip Press',
         strength: Math.min(100, lipPress * 130),
         evidence: `Lips pressed together (${Math.round(lipPress * 100)}%)`,
+      });
+    }
+
+    // Lip stretch / suppressed emotion (lips pulled back tightly)
+    const lipStretch = ((bs.mouthStretchLeft || 0) + (bs.mouthStretchRight || 0)) / 2;
+    if (lipStretch > 0.15) {
+      results.push({
+        id: 'lip_stretch',
+        name: 'Lip Stretch',
+        strength: Math.min(100, lipStretch * 140),
+        evidence: `Lips stretched tightly (${Math.round(lipStretch * 100)}%)`,
+      });
+    }
+
+    // Inner brow raise (sadness indicator)
+    const innerBrowUp = bs.browInnerUp || 0;
+    if (innerBrowUp > 0.12) {
+      results.push({
+        id: 'inner_brow_raise',
+        name: 'Inner Brow Raise',
+        strength: Math.min(100, innerBrowUp * 150),
+        evidence: `Inner eyebrows raised (${Math.round(innerBrowUp * 100)}%) — often signals sadness or concern`,
+      });
+    }
+
+    // Drooping eyelids (sadness/fatigue indicator)
+    const eyeLidDroop = 1 - (((bs.eyeWideLeft || 0) + (bs.eyeWideRight || 0)) / 2);
+    const eyeSquintForDroop = ((bs.eyeSquintLeft || 0) + (bs.eyeSquintRight || 0)) / 2;
+    const droopScore = (eyeLidDroop * 0.4 + eyeSquintForDroop * 0.6);
+    if (droopScore > 0.35 && eyeSquintForDroop > 0.15) {
+      results.push({
+        id: 'drooping_eyelids',
+        name: 'Drooping Eyelids',
+        strength: Math.min(100, droopScore * 120),
+        evidence: `Eyelids lowered/heavy (${Math.round(droopScore * 100)}%) — may indicate sadness or fatigue`,
+      });
+    }
+
+    // Mouth dimple / suppressed cry (mouth corners pulled inward)
+    const mouthDimple = ((bs.mouthDimpleLeft || 0) + (bs.mouthDimpleRight || 0)) / 2;
+    if (mouthDimple > 0.15) {
+      results.push({
+        id: 'mouth_dimple',
+        name: 'Mouth Tension',
+        strength: Math.min(100, mouthDimple * 140),
+        evidence: `Mouth corners pulled inward (${Math.round(mouthDimple * 100)}%) — may indicate suppressed emotion`,
       });
     }
     

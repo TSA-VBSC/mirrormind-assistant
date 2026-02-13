@@ -5,6 +5,7 @@ export type FontSize = 'normal' | 'large' | 'xl';
 export type Verbosity = 'minimal' | 'normal' | 'detailed';
 export type Mode = 'conversation' | 'sports';
 export type LandmarkOverlay = 'off' | 'minimal' | 'full';
+export type EmotionSpeechInterval = 'off' | '10s' | '30s' | '1min' | '5min' | 'shift';
 
 interface Settings {
   theme: Theme;
@@ -17,6 +18,10 @@ interface Settings {
   landmarkOverlay: LandmarkOverlay;
   speakExpressionsFirst: boolean;
   vibrationEnabled: boolean;
+  emotionSpeechInterval: EmotionSpeechInterval;
+  selectedVoice: string;
+  selectedLanguage: string;
+  hoverSpeechEnabled: boolean;
 }
 
 interface SettingsContextType {
@@ -35,6 +40,10 @@ const defaultSettings: Settings = {
   landmarkOverlay: 'minimal',
   speakExpressionsFirst: true,
   vibrationEnabled: true,
+  emotionSpeechInterval: '30s',
+  selectedVoice: '',
+  selectedLanguage: 'en',
+  hoverSpeechEnabled: false,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

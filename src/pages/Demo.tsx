@@ -11,6 +11,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { exportSession } from '@/lib/storage';
 import type { DetectionResult, TimelineEntry } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Settings, 
   Play, 
@@ -21,7 +22,9 @@ import {
   Shield,
   Cpu,
   Gauge,
-  BookOpen
+  BookOpen,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 export default function Demo() {
@@ -252,13 +255,16 @@ export default function Demo() {
                 <ExpressionStack expressions={detectionResult.expressions} />
               </div>
 
-              {/* Emotion Guess */}
-              <div>
-                <h2 className="text-sm font-medium text-muted-foreground mb-3">
+              {/* Emotion Guess - Collapsible */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm font-medium text-muted-foreground mb-3 hover:text-foreground transition-colors group">
+                  <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
                   Emotion Analysis
-                </h2>
-                <EmotionGuess emotions={detectionResult.emotions} />
-              </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <EmotionGuess emotions={detectionResult.emotions} />
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Timeline */}
               <div className="pt-4 border-t border-border">

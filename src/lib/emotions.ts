@@ -15,9 +15,9 @@ const emotionRules: Record<string, { expressions: string[]; weights: number[]; t
     threshold: 35,
   },
   sad: {
-    expressions: ['frown', 'brow_furrow'],
-    weights: [0.6, 0.4],
-    threshold: 35,
+    expressions: ['frown', 'brow_furrow', 'inner_brow_raise', 'drooping_eyelids', 'lip_press', 'lip_stretch', 'mouth_dimple'],
+    weights: [0.2, 0.15, 0.2, 0.15, 0.1, 0.1, 0.1],
+    threshold: 25,
   },
   angry: {
     expressions: ['brow_furrow', 'lip_press', 'squint'],

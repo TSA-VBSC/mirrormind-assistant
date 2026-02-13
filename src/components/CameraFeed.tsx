@@ -5,7 +5,7 @@ import { scoreExpressions, detectConflicts } from '@/lib/expressions';
 import { mapExpressionsToEmotions } from '@/lib/emotions';
 import { smoothDetection, resetSmoothing } from '@/lib/smoothing';
 import { assessQuality } from '@/lib/quality';
-import { speak, generateSpeechText, initSpeech, stopSpeaking } from '@/lib/speech';
+import { speak, generateSpeechText, initSpeech, stopSpeaking, getEmotionSpeechIntervalMs } from '@/lib/speech';
 import { addToTimeline, startSession, endSession, getTimeline } from '@/lib/storage';
 import type { DetectionResult, TimelineEntry } from '@/lib/types';
 import { Camera, CameraOff, Loader2 } from 'lucide-react';
@@ -31,7 +31,9 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
   const frameCount = useRef<number>(0);
   const lastFpsUpdate = useRef<number>(0);
   const lastSpeakTime = useRef<number>(0);
+  const lastEmotionSpeakTime = useRef<number>(0);
   const lastDetectionState = useRef<string>('');
+  const lastEmotionState = useRef<string>('');
 
   const startCamera = useCallback(async () => {
     setIsLoading(true);
@@ -194,9 +196,28 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
         onTimelineUpdate(getTimeline());
       }
 
-      // Voice feedback
+      // Voice feedback - expressions only by default
       if (settings.voiceEnabled && now - lastSpeakTime.current > 2500) {
         const currentState = `${detectionResult.expressions.map(e => e.name).join(',')}:${detectionResult.state}`;
+        
+        // Determine if we should include emotion in speech
+        const emotionInterval = getEmotionSpeechIntervalMs(settings.emotionSpeechInterval);
+        let includeEmotion = false;
+        
+        if (emotionInterval !== null) {
+          const currentEmotion = detectionResult.emotions[0]?.name || 'Neutral';
+          if (emotionInterval === -1) {
+            // Only on significant shift
+            if (currentEmotion !== lastEmotionState.current) {
+              includeEmotion = true;
+              lastEmotionState.current = currentEmotion;
+              lastEmotionSpeakTime.current = now;
+            }
+          } else if (now - lastEmotionSpeakTime.current > emotionInterval) {
+            includeEmotion = true;
+            lastEmotionSpeakTime.current = now;
+          }
+        }
         
         // Only speak on significant changes
         if (currentState !== lastDetectionState.current) {
@@ -207,19 +228,20 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
             detectionResult.stateReason || '',
             settings.verbosity,
             settings.speakExpressionsFirst,
-            settings.mode
+            settings.mode,
+            includeEmotion
           );
           
-          speak(speechText);
+          speak(speechText, false, settings.selectedVoice || undefined, settings.selectedLanguage);
           lastSpeakTime.current = now;
           lastDetectionState.current = currentState;
 
           // Haptic feedback
           if (settings.vibrationEnabled && 'vibrate' in navigator) {
             if (detectionResult.state === 'mixed') {
-              navigator.vibrate([100, 50, 100]); // Double vibration for uncertainty
-            } else if (currentState !== lastDetectionState.current) {
-              navigator.vibrate(50); // Short vibration for change
+              navigator.vibrate([100, 50, 100]);
+            } else {
+              navigator.vibrate(50);
             }
           }
         }
