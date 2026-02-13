@@ -4,6 +4,7 @@ let speechSynthesis: SpeechSynthesis | null = null;
 let lastSpokenText = '';
 let lastSpokenTime = 0;
 const MIN_SPEAK_INTERVAL = 2000;
+let hoverSpeakTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export function initSpeech(): boolean {
   if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -24,73 +25,77 @@ export function getAvailableLanguages(): { code: string; name: string }[] {
   voices.forEach(v => {
     const code = v.lang.split('-')[0];
     if (!langMap.has(code)) {
-      langMap.set(code, new Intl.DisplayNames([code], { type: 'language' }).of(code) || code);
+      try {
+        langMap.set(code, new Intl.DisplayNames([code], { type: 'language' }).of(code) || code);
+      } catch {
+        langMap.set(code, code);
+      }
     }
   });
   return Array.from(langMap.entries()).map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function pickVoice(voiceName?: string, lang?: string): SpeechSynthesisVoice | null {
+  if (!speechSynthesis) return null;
+  const voices = speechSynthesis.getVoices();
+  if (voiceName) {
+    const v = voices.find(v => v.name === voiceName);
+    if (v) return v;
+  }
+  if (lang) {
+    const v = voices.find(v => v.lang.startsWith(lang));
+    if (v) return v;
+  }
+  return voices.find(v =>
+    v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha'))
+  ) || voices.find(v => v.lang.startsWith('en')) || null;
+}
+
 export function speak(text: string, force = false, voiceName?: string, lang?: string): void {
   if (!speechSynthesis) return;
-  
+
   const now = Date.now();
-  
-  if (!force && text === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL * 2) {
-    return;
-  }
-  
-  if (!force && now - lastSpokenTime < MIN_SPEAK_INTERVAL) {
-    return;
-  }
-  
+  if (!force && text === lastSpokenText && now - lastSpokenTime < MIN_SPEAK_INTERVAL * 2) return;
+  if (!force && now - lastSpokenTime < MIN_SPEAK_INTERVAL) return;
+
   speechSynthesis.cancel();
-  
+
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = 1.0;
   utterance.pitch = 1;
   utterance.volume = 1;
-  
-  const voices = speechSynthesis.getVoices();
-  
-  if (voiceName) {
-    const selectedVoice = voices.find(v => v.name === voiceName);
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-  } else if (lang) {
-    const langVoice = voices.find(v => v.lang.startsWith(lang));
-    if (langVoice) utterance.voice = langVoice;
-  } else {
-    const preferredVoice = voices.find(v => 
-      v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha'))
-    ) || voices.find(v => v.lang.startsWith('en'));
-    if (preferredVoice) utterance.voice = preferredVoice;
-  }
-  
+
+  const voice = pickVoice(voiceName, lang);
+  if (voice) utterance.voice = voice;
+
   speechSynthesis.speak(utterance);
   lastSpokenText = text;
   lastSpokenTime = now;
 }
 
-/** Speak a short label for hover-to-speak accessibility */
+/** Speak a short label for hover-to-speak accessibility (with debounce) */
 export function speakLabel(label: string, voiceName?: string, lang?: string): void {
   if (!speechSynthesis) return;
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(label);
-  utterance.rate = 1.1;
-  utterance.pitch = 1;
-  utterance.volume = 0.8;
-  
-  const voices = speechSynthesis.getVoices();
-  if (voiceName) {
-    const v = voices.find(v => v.name === voiceName);
-    if (v) utterance.voice = v;
-  } else if (lang) {
-    const v = voices.find(v => v.lang.startsWith(lang));
-    if (v) utterance.voice = v;
+
+  // Debounce: cancel previous pending hover speech
+  if (hoverSpeakTimeout) {
+    clearTimeout(hoverSpeakTimeout);
   }
-  
-  speechSynthesis.speak(utterance);
+
+  hoverSpeakTimeout = setTimeout(() => {
+    if (!speechSynthesis) return;
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(label);
+    utterance.rate = 1.1;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+
+    const voice = pickVoice(voiceName, lang);
+    if (voice) utterance.voice = voice;
+
+    speechSynthesis.speak(utterance);
+    hoverSpeakTimeout = null;
+  }, 350); // 350ms delay to prevent rapid spam
 }
 
 export function getEmotionSpeechIntervalMs(interval: string): number | null {
@@ -105,6 +110,11 @@ export function getEmotionSpeechIntervalMs(interval: string): number | null {
   }
 }
 
+/**
+ * Generate speech text.
+ * By default (minimal/normal without detailed), only speaks the primary emotion label.
+ * Detailed mode adds expression context.
+ */
 export function generateSpeechText(
   expressions: Expression[],
   emotions: Emotion[],
@@ -115,73 +125,64 @@ export function generateSpeechText(
   mode: 'conversation' | 'sports',
   includeEmotion: boolean = false
 ): string {
+  // Low visibility — always announce
   if (state === 'low') {
-    return verbosity === 'minimal' 
-      ? 'Low visibility' 
-      : 'It looks like visibility is low right now. Try adjusting the lighting or facing the camera more directly.';
+    return verbosity === 'detailed'
+      ? 'Low visibility right now. Try adjusting the lighting or facing the camera more directly.'
+      : 'Low visibility';
   }
-  
-  const topExpressions = expressions.slice(0, 3);
+
   const topEmotion = emotions[0];
-  
+  const emotionLabel = topEmotion?.name || 'Neutral';
+
+  // Sports mode — ultra terse
   if (mode === 'sports') {
-    if (topExpressions.length === 0) return 'Neutral';
-    const expName = topExpressions[0].name;
-    const strength = topExpressions[0].strength > 70 ? 'High' : topExpressions[0].strength > 40 ? 'Medium' : 'Low';
     if (state === 'mixed') return 'Mixed signals';
-    return `${expName}. ${strength}.`;
+    return emotionLabel;
   }
-  
-  // Conversation mode - warm, supportive tone
+
+  // Mixed signals
   if (state === 'mixed') {
-    if (verbosity === 'minimal') {
-      return 'I\'m noticing some mixed signals';
+    if (verbosity === 'detailed') {
+      return `Mixed signals. ${stateReason}`;
     }
-    return `I\'m picking up mixed signals: ${stateReason}. That\'s completely normal — expressions can be complex.`;
+    return 'Mixed signals';
   }
-  
-  if (topExpressions.length === 0) {
-    return verbosity === 'minimal' ? 'Neutral' : 'Things look calm and neutral right now — no strong signals to report.';
+
+  // No expressions detected
+  if (expressions.length === 0) {
+    return 'Neutral';
   }
-  
-  let text = '';
-  
-  if (speakExpressionsFirst) {
-    if (verbosity === 'minimal') {
-      text = topExpressions[0].name;
-    } else if (verbosity === 'normal') {
-      const expList = topExpressions.map(e => e.name.toLowerCase()).join(', ');
-      text = `I\'m noticing ${expList}.`;
-      if (includeEmotion) {
-        text += ` This often goes with feeling ${topEmotion?.name?.toLowerCase() || 'neutral'}.`;
-      }
-    } else {
-      const expDetails = topExpressions.map(e => `${e.name.toLowerCase()} at ${e.strength}%`).join(', ');
-      text = `I can see ${expDetails}. ${topExpressions[0].evidence}. `;
-      if (includeEmotion) {
-        text += `This pattern often suggests ${topEmotion?.name?.toLowerCase() || 'neutral'} — about ${topEmotion?.confidence || 50}% likely.`;
-      }
+
+  // ---------- Normal conversation output ----------
+
+  // If we should include emotion (based on interval timer)
+  if (includeEmotion) {
+    if (verbosity === 'detailed') {
+      // Detailed: emotion + top expressions
+      const expList = expressions.slice(0, 3).map(e => e.name.toLowerCase()).join(', ');
+      return `${emotionLabel}. Based on ${expList}.`;
     }
-  } else {
-    if (!includeEmotion) {
-      // If not including emotion, just describe expressions
-      const expList = topExpressions.map(e => e.name.toLowerCase()).join(', ');
-      text = verbosity === 'minimal' ? topExpressions[0].name : `I\'m noticing ${expList}.`;
-    } else if (verbosity === 'minimal') {
-      text = topEmotion?.name || 'Neutral';
-    } else if (verbosity === 'normal') {
-      text = `It looks like ${topEmotion?.name?.toLowerCase() || 'neutral'}. I\'m seeing ${topExpressions[0].name.toLowerCase()}.`;
-    } else {
-      text = `The overall feeling seems ${topEmotion?.name?.toLowerCase() || 'neutral'} — about ${topEmotion?.confidence || 50}% confident. `;
-      text += `This is based on ${topExpressions.map(e => e.name.toLowerCase()).join(', ')}.`;
-    }
+    // Minimal & normal: just the emotion label word
+    return emotionLabel;
   }
-  
-  return text;
+
+  // When NOT including emotion, speak top expression only (if speakExpressionsFirst)
+  if (speakExpressionsFirst && verbosity === 'detailed') {
+    const expList = expressions.slice(0, 2).map(e => e.name.toLowerCase()).join(' and ');
+    return `Noticing ${expList}.`;
+  }
+
+  // Default: just emotion label
+  return emotionLabel;
 }
 
 export function stopSpeaking(): void {
   if (speechSynthesis) {
     speechSynthesis.cancel();
+  }
+  if (hoverSpeakTimeout) {
+    clearTimeout(hoverSpeakTimeout);
+    hoverSpeakTimeout = null;
   }
 }
