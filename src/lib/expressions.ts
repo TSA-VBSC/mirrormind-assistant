@@ -262,17 +262,32 @@ export function scoreExpressions(features: FaceFeatures, blendshapes?: any[]): E
 // Detect conflicting expressions for "Mixed Signals" state
 export function detectConflicts(expressions: ExpressionResult[]): { isConflicting: boolean; reason: string } {
   const hasSmile = expressions.find(e => e.id === 'smile' && e.strength > 40);
-  const hasFrown = expressions.find(e => e.id === 'frown' && e.strength > 40);
+  const hasFrown = expressions.find(e => e.id === 'frown' && e.strength > 30);
   const hasBrowFurrow = expressions.find(e => e.id === 'brow_furrow' && e.strength > 40);
-  const hasLipPress = expressions.find(e => e.id === 'lip_press' && e.strength > 40);
+  const hasLipPress = expressions.find(e => e.id === 'lip_press' && e.strength > 30);
   const hasSquint = expressions.find(e => e.id === 'squint' && e.strength > 40);
   const hasBrowRaise = expressions.find(e => e.id === 'brow_raise' && e.strength > 40);
+  const hasInnerBrowRaise = expressions.find(e => e.id === 'inner_brow_raise' && e.strength > 25);
+  const hasDroopingEyelids = expressions.find(e => e.id === 'drooping_eyelids' && e.strength > 25);
+  const hasMouthTension = expressions.find(e => e.id === 'mouth_dimple' && e.strength > 25);
+  const hasLipStretch = expressions.find(e => e.id === 'lip_stretch' && e.strength > 25);
+  
+  // Smile + sadness indicators = possible suppressed sadness / polite mask
+  if (hasSmile && (hasInnerBrowRaise || hasDroopingEyelids) && hasSmile.strength < 60) {
+    const sadIndicators = [hasInnerBrowRaise, hasDroopingEyelids, hasMouthTension, hasLipPress].filter(Boolean);
+    if (sadIndicators.length >= 2) {
+      return {
+        isConflicting: true,
+        reason: `Weak smile with inner brow raise and eyelid droop — may be masking sadness or discomfort`,
+      };
+    }
+  }
   
   // Smile + Brow furrow = polite/awkward smile
   if (hasSmile && hasBrowFurrow) {
     return {
       isConflicting: true,
-      reason: `Smile (${Math.round(hasSmile.strength)}) + Brow furrow (${Math.round(hasBrowFurrow.strength)}) - could be polite/nervous smile`,
+      reason: `Smile (${Math.round(hasSmile.strength)}) + Brow furrow (${Math.round(hasBrowFurrow.strength)}) — could be polite/nervous smile`,
     };
   }
   
@@ -280,7 +295,7 @@ export function detectConflicts(expressions: ExpressionResult[]): { isConflictin
   if (hasSmile && hasLipPress) {
     return {
       isConflicting: true,
-      reason: `Smile (${Math.round(hasSmile.strength)}) + Lip press (${Math.round(hasLipPress.strength)}) - may be suppressing emotion`,
+      reason: `Smile (${Math.round(hasSmile.strength)}) + Lip press (${Math.round(hasLipPress.strength)}) — may be suppressing emotion`,
     };
   }
   
@@ -288,7 +303,7 @@ export function detectConflicts(expressions: ExpressionResult[]): { isConflictin
   if (hasSquint && hasLipPress && hasBrowRaise) {
     return {
       isConflicting: true,
-      reason: `Squint + Lip press + Brow raise - possible sarcasm or skepticism`,
+      reason: `Squint + Lip press + Brow raise — possible sarcasm or skepticism`,
     };
   }
   
@@ -296,7 +311,7 @@ export function detectConflicts(expressions: ExpressionResult[]): { isConflictin
   if (hasSmile && hasFrown) {
     return {
       isConflicting: true,
-      reason: `Mixed mouth signals - smile and frown detected`,
+      reason: `Mixed mouth signals — smile and frown detected`,
     };
   }
   

@@ -198,31 +198,36 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
         onTimelineUpdate(getTimeline());
       }
 
-      // Voice feedback - expressions only by default
-      if (settings.voiceEnabled && now - lastSpeakTime.current > 2500) {
-        const currentState = `${detectionResult.expressions.map(e => e.name).join(',')}:${detectionResult.state}`;
-        
-        // Determine if we should include emotion in speech
+      // Voice feedback — only speaks emotion label, controlled by interval
+      if (settings.voiceEnabled) {
         const emotionInterval = getEmotionSpeechIntervalMs(settings.emotionSpeechInterval);
-        let includeEmotion = false;
-        
-        if (emotionInterval !== null) {
-          const currentEmotion = detectionResult.emotions[0]?.name || 'Neutral';
-          if (emotionInterval === -1) {
-            // Only on significant shift
-            if (currentEmotion !== lastEmotionState.current) {
-              includeEmotion = true;
-              lastEmotionState.current = currentEmotion;
-              lastEmotionSpeakTime.current = now;
-            }
-          } else if (now - lastEmotionSpeakTime.current > emotionInterval) {
-            includeEmotion = true;
-            lastEmotionSpeakTime.current = now;
+        const currentEmotion = detectionResult.emotions[0]?.name || 'Neutral';
+
+        let shouldSpeak = false;
+
+        if (emotionInterval === null) {
+          // "Off" — never speak emotions automatically
+          shouldSpeak = false;
+        } else if (emotionInterval === -1) {
+          // "On significant shift" — only when emotion label changes
+          if (currentEmotion !== lastEmotionState.current) {
+            shouldSpeak = true;
+          }
+        } else {
+          // Timed interval
+          if (now - lastEmotionSpeakTime.current > emotionInterval) {
+            shouldSpeak = true;
           }
         }
-        
-        // Only speak on significant changes
-        if (currentState !== lastDetectionState.current) {
+
+        // Also announce state changes (low visibility, mixed) independently
+        const currentState = detectionResult.state;
+        if (currentState !== 'clear' && currentState !== lastDetectionState.current && now - lastSpeakTime.current > 3000) {
+          const stateText = currentState === 'low' ? 'Low visibility' : 'Mixed signals';
+          speak(stateText, false, settings.selectedVoice || undefined, settings.selectedLanguage);
+          lastSpeakTime.current = now;
+          lastDetectionState.current = currentState;
+        } else if (shouldSpeak) {
           const speechText = generateSpeechText(
             detectionResult.expressions,
             detectionResult.emotions,
@@ -231,21 +236,24 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
             settings.verbosity,
             settings.speakExpressionsFirst,
             settings.mode,
-            includeEmotion
+            true // includeEmotion — this just speaks the label
           );
-          
+
           speak(speechText, false, settings.selectedVoice || undefined, settings.selectedLanguage);
           lastSpeakTime.current = now;
+          lastEmotionSpeakTime.current = now;
+          lastEmotionState.current = currentEmotion;
           lastDetectionState.current = currentState;
+        }
 
-          // Haptic feedback
-          if (settings.vibrationEnabled && 'vibrate' in navigator) {
-            if (detectionResult.state === 'mixed') {
-              navigator.vibrate([100, 50, 100]);
-            } else {
-              navigator.vibrate(50);
-            }
+        // Haptic feedback on emotion change
+        if (settings.vibrationEnabled && 'vibrate' in navigator && currentEmotion !== lastEmotionState.current) {
+          if (detectionResult.state === 'mixed') {
+            navigator.vibrate([100, 50, 100]);
+          } else {
+            navigator.vibrate(50);
           }
+          lastEmotionState.current = currentEmotion;
         }
       }
 
