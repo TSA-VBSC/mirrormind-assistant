@@ -34,6 +34,8 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
   const lastEmotionSpeakTime = useRef<number>(0);
   const lastDetectionState = useRef<string>('');
   const lastEmotionState = useRef<string>('');
+  const lastUIUpdateTime = useRef<number>(0);
+  const latestResult = useRef<any>(null);
 
   const startCamera = useCallback(async () => {
     setIsLoading(true);
@@ -247,8 +249,12 @@ export function CameraFeed({ isActive, onDetectionResult, onTimelineUpdate, onFp
         }
       }
 
-      // Update result
-      onDetectionResult(detectionResult);
+      // Throttle UI updates to every 2.5s for calm, stable display
+      latestResult.current = detectionResult;
+      if (now - lastUIUpdateTime.current > 2500) {
+        onDetectionResult(detectionResult);
+        lastUIUpdateTime.current = now;
+      }
 
       // FPS calculation
       frameCount.current++;

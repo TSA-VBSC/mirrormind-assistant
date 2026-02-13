@@ -246,25 +246,25 @@ export default function Demo() {
                 />
               )}
 
-              {/* Expression Stack */}
-              <div>
-                <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />
-                  Expressions Detected
-                </h2>
-                <ExpressionStack expressions={detectionResult.expressions} />
-              </div>
-
-              {/* Emotion Guess - Collapsible */}
+              {/* Expression Stack - Collapsible, closed by default */}
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-2 w-full text-sm font-medium text-muted-foreground mb-3 hover:text-foreground transition-colors group">
                   <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                  Emotion Analysis
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+                  Expressions Detected
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <EmotionGuess emotions={detectionResult.emotions} />
+                  <ExpressionStack expressions={detectionResult.expressions} />
                 </CollapsibleContent>
               </Collapsible>
+
+              {/* Emotion Analysis - Always visible */}
+              <div>
+                <h2 className="text-sm font-medium text-muted-foreground mb-3">
+                  Emotion Analysis
+                </h2>
+                <EmotionGuess emotions={detectionResult.emotions} />
+              </div>
 
               {/* Timeline */}
               <div className="pt-4 border-t border-border">

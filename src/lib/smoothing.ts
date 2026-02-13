@@ -3,9 +3,9 @@ import type { Expression, Emotion, DetectionState, DetectionResult } from './typ
 // Exponential Moving Average (EMA) smoothing
 // Higher alpha = more responsive to changes, lower alpha = smoother
 
-const ALPHA = 0.3; // Smoothing factor
-const STABILITY_FRAMES = 5; // Frames required for stability lock
-const MIN_CHANGE_THRESHOLD = 10; // Minimum change to trigger update
+const ALPHA = 0.15; // Lower = smoother, less flicker
+const STABILITY_FRAMES = 8; // More frames required for stability
+const MIN_CHANGE_THRESHOLD = 8; // Minimum change to trigger update
 
 interface SmoothedState {
   expressions: Map<string, { strength: number; frames: number }>;
