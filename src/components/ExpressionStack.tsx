@@ -88,7 +88,7 @@ export function ExpressionStack({ expressions, maxDisplay = 4 }: ExpressionStack
             <div className="strength-bar h-2" role="progressbar" aria-valuenow={expression.strength} aria-valuemin={0} aria-valuemax={100}>
               <div 
                 className={`strength-bar-fill ${strengthClass}`}
-                style={{ width: `${expression.strength}%` }}
+                style={{ width: `${expression.strength}%`, transition: 'width 1.5s ease-in-out' }}
               />
             </div>
             
