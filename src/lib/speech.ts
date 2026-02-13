@@ -156,24 +156,7 @@ export function generateSpeechText(
 
   // ---------- Normal conversation output ----------
 
-  // If we should include emotion (based on interval timer)
-  if (includeEmotion) {
-    if (verbosity === 'detailed') {
-      // Detailed: emotion + top expressions
-      const expList = expressions.slice(0, 3).map(e => e.name.toLowerCase()).join(', ');
-      return `${emotionLabel}. Based on ${expList}.`;
-    }
-    // Minimal & normal: just the emotion label word
-    return emotionLabel;
-  }
-
-  // When NOT including emotion, speak top expression only (if speakExpressionsFirst)
-  if (speakExpressionsFirst && verbosity === 'detailed') {
-    const expList = expressions.slice(0, 2).map(e => e.name.toLowerCase()).join(' and ');
-    return `Noticing ${expList}.`;
-  }
-
-  // Default: just emotion label
+  // Always speak the primary emotion label
   return emotionLabel;
 }
 
