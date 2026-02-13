@@ -22,28 +22,12 @@ export function EmotionGuess({ emotions, showAlternatives = true }: EmotionGuess
   }
 
   const getEmotionColor = (emotion: string): string => {
-    const lower = emotion.toLowerCase();
-    switch (lower) {
-      case 'happy':
-        return 'text-success';
-      case 'surprised':
-        return 'text-warning';
-      case 'sad':
-        return 'text-expression-medium';
-      case 'angry':
-        return 'text-destructive';
-      case 'fearful':
-        return 'text-warning';
-      case 'disgusted':
-        return 'text-expression-low';
-      case 'skeptical':
-        return 'text-expression-medium';
-      case 'confused':
-        return 'text-expression-medium';
-      case 'interested':
-        return 'text-primary';
-      default:
-        return 'text-muted-foreground';
+    switch (emotion.toLowerCase()) {
+      case 'happy': return 'text-success';
+      case 'surprised': return 'text-warning';
+      case 'sad': return 'text-primary';
+      case 'neutral':
+      default: return 'text-muted-foreground';
     }
   };
 
