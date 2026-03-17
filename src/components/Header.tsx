@@ -101,6 +101,18 @@ export function Header() {
                 Try Demo
               </Button>
             </Link>
+            <Link
+              to="/account"
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <User className="h-4 w-4" />
+              {username ?? 'Account'}
+            </Link>
+            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       )}
