@@ -53,6 +53,16 @@ export function Header() {
               Try Demo
             </Button>
           </Link>
+          <Link
+            to="/account"
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            <User className="h-4 w-4" />
+            <span className="max-w-[100px] truncate">{username ?? 'Account'}</span>
+          </Link>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Mobile Menu Button */}
