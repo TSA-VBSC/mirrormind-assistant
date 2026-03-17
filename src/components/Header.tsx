@@ -1,11 +1,19 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Brain, Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Brain, Menu, X, User, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { username, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const navLinks = [
     { path: '/', label: 'Home' },
@@ -45,6 +53,16 @@ export function Header() {
               Try Demo
             </Button>
           </Link>
+          <Link
+            to="/account"
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            <User className="h-4 w-4" />
+            <span className="max-w-[100px] truncate">{username ?? 'Account'}</span>
+          </Link>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Mobile Menu Button */}
@@ -83,6 +101,18 @@ export function Header() {
                 Try Demo
               </Button>
             </Link>
+            <Link
+              to="/account"
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <User className="h-4 w-4" />
+              {username ?? 'Account'}
+            </Link>
+            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       )}
