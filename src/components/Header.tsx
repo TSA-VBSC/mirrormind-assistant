@@ -6,7 +6,14 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { username, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const navLinks = [
     { path: '/', label: 'Home' },
